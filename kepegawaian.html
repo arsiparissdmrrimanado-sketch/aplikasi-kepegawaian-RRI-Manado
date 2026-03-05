@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Kepegawaian LPP RRI MANADO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .modal-active { display: flex !important; }
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+        .stat-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
+        .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        
+        @media print {
+            .no-print { display: none !important; }
+            #printableArea { padding: 0 !important; }
+            .stat-card { break-inside: avoid; }
+        }
+
+        /* Custom scrollbar for cards */
+        .card-scroll::-webkit-scrollbar { width: 4px; }
+        .card-scroll::-webkit-scrollbar-track { background: transparent; }
+        .card-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-900">
+
+    <div class="min-h-screen flex">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-slate-900 text-slate-300 hidden md:flex flex-col flex-shrink-0 shadow-2xl no-print">
+            <div class="p-8 border-b border-slate-800 flex flex-col items-center gap-4">
+                <div class="w-20 h-20 bg-white rounded-2xl overflow-hidden shadow-lg flex items-center justify-center p-2">
+                    <img src="https://drive.google.com/thumbnail?id=1UxSp_9U6A4wiDz-GarFhM31m3Ynrmdus&sz=w200" 
+                         alt="Logo RRI" 
+                         onerror="this.parentElement.innerHTML='<i data-lucide=\'shield-check\' class=\'w-10 h-10 text-indigo-600\'></i>'"
+                         class="max-w-full max-h-full object-contain">
+                </div>
+                <div class="text-center">
+                    <span class="text-lg font-extrabold tracking-tight text-white block uppercase">RRI <span class="text-indigo-500">MANADO</span></span>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Manajemen Kepegawaian</p>
+                </div>
+            </div>
+            <nav class="flex-1 p-6 space-y-3">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] px-3 mb-2">Navigasi Utama</p>
+                <button onclick="showSection('dashboard')" class="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-slate-800 hover:text-white transition group active bg-slate-800 text-white shadow-lg shadow-black/20" id="nav-dashboard">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 text-indigo-400"></i> <span class="font-semibold">Dasbor Analitik</span>
+                </button>
+                <button onclick="showSection('employees')" class="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-slate-800 hover:text-white transition group text-left" id="nav-employees">
+                    <i data-lucide="users" class="w-5 h-5 group-hover:text-indigo-400"></i> <span class="font-semibold">Data Pegawai</span>
+                </button>
+            </nav>
+            <div class="p-6 m-4 bg-slate-800/50 rounded-3xl border border-slate-700/50">
+                <p class="text-xs text-slate-400 leading-relaxed font-medium">SIMPEG RRI v1.7 (Enhanced Analytics)</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <header class="glass-header h-24 flex items-center justify-between px-10 z-30 flex-shrink-0 border-b border-slate-100 no-print">
+                <div class="flex items-center gap-6">
+                    <button class="md:hidden text-slate-600 p-2 bg-slate-100 rounded-lg"><i data-lucide="menu"></i></button>
+                    <div>
+                        <h1 id="section-title" class="text-xl font-extrabold text-slate-800 tracking-tight">Manajemen Kepegawaian LPP RRI MANADO</h1>
+                        <p class="text-sm text-slate-400 font-medium italic">Sistem Monitoring & Database SDM</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-bold text-slate-700" id="currentDate"></p>
+                        <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Administrator</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-lg p-0.5">
+                        <div class="w-full h-full rounded-[14px] bg-white flex items-center justify-center">
+                            <i data-lucide="user" class="text-indigo-500"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-10" id="printableArea">
+                
+                <!-- SECTION: DASHBOARD -->
+                <section id="dashboard-section" class="space-y-10 animate-in fade-in duration-700">
+                    <div class="flex justify-between items-end no-print">
+                        <div class="space-y-1">
+                            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Ringkasan Statistik</h2>
+                            <p class="text-sm text-slate-400 font-medium">Visualisasi rincian data kepegawaian terkini.</p>
+                        </div>
+                        <button onclick="downloadDashboardPDF()" class="bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 px-6 py-3 rounded-2xl flex items-center gap-2 transition-all font-bold text-xs shadow-sm">
+                            <i data-lucide="download-cloud" class="w-4 h-4"></i> Cetak Laporan PDF
+                        </button>
+                    </div>
+
+                    <div id="pdfHeader" class="hidden p-6 bg-slate-900 text-white rounded-3xl items-center gap-6 mb-8">
+                        <div>
+                            <h1 class="text-xl font-black uppercase tracking-tight">LAPORAN DATA KEPEGAWAIAN LPP RRI MANADO</h1>
+                            <p class="text-xs font-bold text-indigo-400 uppercase tracking-widest" id="pdfDate"></p>
+                        </div>
+                    </div>
+
+                    <!-- Main Stats -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="stat-card bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden group">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50 rounded-full group-hover:scale-150 transition-transform duration-500 no-print"></div>
+                            <div class="relative">
+                                <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mb-5 shadow-lg shadow-indigo-200">
+                                    <i data-lucide="users"></i>
+                                </div>
+                                <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em] mb-1">Total Karyawan</p>
+                                <h3 class="text-4xl font-black text-slate-800 tracking-tighter" id="stat-total">0</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50 flex items-center justify-between">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-cyan-500 rounded-full"></span> Status Pegawai
+                                </h4>
+                            </div>
+                            <div id="grid-status" class="p-8 space-y-4 text-sm"></div>
+                        </div>
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50 flex items-center justify-between">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-pink-500 rounded-full"></span> Jenis Kelamin
+                                </h4>
+                            </div>
+                            <div id="grid-jk" class="p-8 space-y-4 text-sm"></div>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Section Rincian Nama per Bidang -->
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                                <i data-lucide="briefcase" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-black text-slate-800 tracking-tight">Daftar Nama Pegawai Sesuai Bidang</h3>
+                                <p class="text-xs text-slate-400 font-medium">Klik pada grup bidang untuk melihat daftar nama lengkap.</p>
+                            </div>
+                        </div>
+                        
+                        <div id="grid-nama-bidang" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <!-- Area ini akan diisi secara dinamis -->
+                        </div>
+                    </div>
+
+                    <!-- Detailed Grids (Bar Charts) -->
+                    <div class="custom-grid">
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-emerald-500 rounded-full"></span> Agama
+                                </h4>
+                            </div>
+                            <div id="grid-agama" class="p-8 space-y-4 text-sm"></div>
+                        </div>
+
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-purple-500 rounded-full"></span> Golongan
+                                </h4>
+                            </div>
+                            <div id="grid-golongan" class="p-8 space-y-4 text-sm max-h-[350px] overflow-y-auto card-scroll"></div>
+                        </div>
+
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-amber-500 rounded-full"></span> Bidang
+                                </h4>
+                            </div>
+                            <div id="grid-bidang" class="p-8 space-y-4 text-sm max-h-[350px] overflow-y-auto card-scroll"></div>
+                        </div>
+
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-blue-400 rounded-full"></span> Jabatan
+                                </h4>
+                            </div>
+                            <div id="grid-jabatan" class="p-8 space-y-4 text-sm max-h-[350px] overflow-y-auto card-scroll"></div>
+                        </div>
+
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-indigo-500 rounded-full"></span> Unit Kerja
+                                </h4>
+                            </div>
+                            <div id="grid-rincian_unit" class="p-8 space-y-4 text-sm max-h-[350px] overflow-y-auto card-scroll"></div>
+                        </div>
+
+                        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-8 border-b border-slate-50">
+                                <h4 class="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-3">
+                                    <span class="w-2 h-6 bg-slate-800 rounded-full"></span> Pelaksana per Bidang
+                                </h4>
+                            </div>
+                            <div id="grid-pelaksana" class="p-8 space-y-4 text-sm max-h-[350px] overflow-y-auto card-scroll"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: EMPLOYEES -->
+                <section id="employees-section" class="hidden space-y-8 animate-in slide-in-from-bottom-6 duration-700">
+                    <div class="flex flex-col lg:flex-row justify-between gap-6 no-print">
+                        <div class="relative flex-1 group">
+                            <i data-lucide="search" class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-indigo-500 transition-colors"></i>
+                            <input type="text" id="employeeSearch" placeholder="Cari Nama, NIP, Jabatan..." class="w-full pl-14 pr-6 py-4.5 bg-white border border-slate-200 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all shadow-sm">
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <input type="file" id="excelInput" class="hidden" accept=".xlsx, .xls">
+                            <button onclick="document.getElementById('excelInput').click()" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white px-6 py-4 rounded-2xl flex items-center gap-2 transition-all font-bold text-sm">
+                                <i data-lucide="file-up" class="w-4 h-4"></i> Impor Excel
+                            </button>
+                            <button onclick="openAddModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl flex items-center gap-2 transition-all shadow-xl shadow-indigo-100 font-bold text-sm">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Tambah Manual
+                            </button>
+                            <button onclick="clearAllData()" class="bg-white text-red-500 border border-slate-100 hover:bg-red-50 px-6 py-4 rounded-2xl flex items-center gap-2 transition-all font-bold text-sm">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Kosongkan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="table-container overflow-x-auto">
+                            <table class="w-full text-left min-w-[1300px]">
+                                <thead class="bg-slate-50/50 border-b border-slate-100">
+                                    <tr>
+                                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Data Diri</th>
+                                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Lahir & Usia</th>
+                                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Info Status</th>
+                                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Jabatan & Gol</th>
+                                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Unit Kerja</th>
+                                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center no-print">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employeeTableBody" class="divide-y divide-slate-50 text-sm"></tbody>
+                            </table>
+                        </div>
+                        <div id="noDataMessage" class="hidden py-32 text-center text-slate-300 font-bold uppercase tracking-widest text-xs">Belum Ada Data Terdeteksi</div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL FORM -->
+    <div id="employeeModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-[100] p-4 backdrop-blur-sm no-print">
+        <div class="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
+            <div class="flex items-center justify-between p-10 border-b border-slate-50">
+                <h3 class="text-2xl font-black text-slate-800" id="modalTitle">Data Pegawai</h3>
+                <button onclick="toggleModal(false)" class="p-3 bg-slate-50 text-slate-400 rounded-2xl"><i data-lucide="x"></i></button>
+            </div>
+            <form id="employeeForm" class="p-10 space-y-6 overflow-y-auto">
+                <input type="hidden" id="formId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Nama Lengkap</label>
+                        <input type="text" id="formNama" required class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">NIP</label>
+                        <input type="text" id="formNip" required class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Jenis Kelamin</label>
+                        <select id="formJk" class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                            <option value="L">LAKI-LAKI</option>
+                            <option value="P">PEREMPUAN</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Unit Kerja</label>
+                        <input type="text" id="formRincianUnit" class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Status</label>
+                        <select id="formStatus" class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                            <option value="PNS">PNS</option>
+                            <option value="CPNS">CPNS</option>
+                            <option value="PPPK">PPPK</option>
+                            <option value="PPPK PARUH WAKTU">PPPK PARUH WAKTU</option>
+                            <option value="NON ASN">NON ASN</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Jabatan</label>
+                        <input type="text" id="formJabatan" required class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Kelompok Jabatan</label>
+                        <input type="text" id="formKelompokJabatan" class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Bidang</label>
+                        <input type="text" id="formBidang" class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Golongan</label>
+                        <input type="text" id="formGolongan" class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Agama</label>
+                        <input type="text" id="formAgama" class="w-full px-6 py-4 bg-slate-50 rounded-[1.25rem] border-none font-bold">
+                    </div>
+                </div>
+                <div class="pt-10 flex gap-4">
+                    <button type="button" onclick="toggleModal(false)" class="flex-1 px-8 py-5 border-2 border-slate-50 text-slate-400 rounded-[1.5rem] font-bold">Batal</button>
+                    <button type="submit" class="flex-1 px-8 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black shadow-xl shadow-indigo-100">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-6 rounded-[2.5rem] shadow-2xl flex items-center gap-6 transform translate-y-40 opacity-0 transition-all duration-500 z-[200]">
+        <div id="toastIcon" class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center">
+            <i data-lucide="info" class="w-5 h-5"></i>
+        </div>
+        <div class="flex flex-col">
+            <span class="font-black text-sm" id="toastTitle">Berhasil</span>
+            <span class="text-xs text-slate-400" id="toastMsg">Data telah diproses.</span>
+        </div>
+    </div>
+
+    <script>
+        // Persistence Key
+        const STORAGE_KEY = 'simpeg_v3_data_master';
+
+        // Load Data from LocalStorage immediately
+        let employees = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        // Mapping Kolom (Smart Mapping)
+        const columnMap = {
+            nama: ['NAMA', 'NAMA LENGKAP', 'N A M A'],
+            nip: ['NIP', 'NOMOR INDUK PEGAWAI'],
+            status: ['STATUS', 'STATUS PEGAWAI'],
+            jk: ['JK', 'JENIS KELAMIN', 'GENDER', 'J K'],
+            agama: ['AGAMA', 'KEPERCAYAAN'],
+            jabatan: ['JABATAN', 'NAMA JABATAN'],
+            kelompok_jabatan: ['KELOMPOK JABATAN', 'JENIS JABATAN'],
+            bidang: ['BIDANG', 'BAGIAN'],
+            golongan: ['GOLONGAN', 'GOL', 'PANGKAT'],
+            rincian_unit: ['RINCIAN UNIT KERJA', 'UNIT KERJA', 'RINCIAN UNIT']
+        };
+
+        function init() {
+            lucide.createIcons();
+            const dateStr = new Intl.DateTimeFormat('id-ID', { dateStyle: 'full' }).format(new Date());
+            document.getElementById('currentDate').textContent = dateStr;
+            document.getElementById('pdfDate').textContent = dateStr;
+            renderEmployees();
+            updateStats();
+        }
+
+        // --- NIP LOGIC: EXTRACT BIRTHDATE & AGE ---
+        function extractInfoFromNip(nip) {
+            const cleanNip = String(nip || '').replace(/\s/g, '');
+            if (cleanNip.length < 8) return { tglLahir: '-', usia: '-' };
+            const y = cleanNip.substring(0, 4);
+            const m = cleanNip.substring(4, 6);
+            const d = cleanNip.substring(6, 8);
+            const birthDate = new Date(`${y}-${m}-${d}`);
+            if (isNaN(birthDate.getTime())) return { tglLahir: '-', usia: '-' };
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+            return { tglLahir: `${d} ${monthNames[parseInt(m)-1]} ${y}`, usia: age >= 0 ? age : '-' };
+        }
+
+        // --- CORE ANALYTICS ---
+        function updateStats() {
+            document.getElementById('stat-total').textContent = employees.length;
+            const fields = ['status', 'jk', 'agama', 'golongan', 'bidang', 'jabatan', 'rincian_unit'];
+            fields.forEach(f => renderDashboardGrid(`grid-${f}`, f));
+            renderPelaksanaGrid();
+            renderNamaPerBidang();
+        }
+
+        function renderDashboardGrid(elementId, field) {
+            const container = document.getElementById(elementId);
+            if (!container) return;
+            if (employees.length === 0) {
+                container.innerHTML = '<div class="py-12 text-center opacity-20 text-[10px] font-bold uppercase tracking-widest">Database Kosong</div>';
+                return;
+            }
+            const counts = {};
+            employees.forEach(emp => {
+                let val = String(emp[field] || 'TIDAK TERISI').trim().toUpperCase();
+                if (val === '-' || val === '' || val === 'UNDEFINED' || val === 'NULL') val = 'TIDAK TERISI';
+                counts[val] = (counts[val] || 0) + 1;
+            });
+            const sortedKeys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+            container.innerHTML = sortedKeys.map(key => `
+                <div class="space-y-1 group">
+                    <div class="flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-slate-500 uppercase tracking-tight truncate pr-4">${key}</span>
+                        <span class="text-slate-900">${counts[key]}</span>
+                    </div>
+                    <div class="w-full bg-slate-50 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-indigo-500 h-full rounded-full transition-all duration-700 group-hover:bg-indigo-400" style="width: ${(counts[key]/employees.length)*100}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- RINCIAN NAMA PER BIDANG LOGIC ---
+        function renderNamaPerBidang() {
+            const container = document.getElementById('grid-nama-bidang');
+            if (!container) return;
+            
+            if (employees.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-16 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-300">
+                        <i data-lucide="info" class="w-8 h-8 mb-2"></i>
+                        <span class="text-xs font-black uppercase tracking-widest">Belum ada data untuk dirincikan</span>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            const groups = {};
+            employees.forEach(emp => {
+                let bidang = String(emp.bidang || 'TIDAK TERISI').trim().toUpperCase();
+                if (!groups[bidang]) groups[bidang] = [];
+                groups[bidang].push(emp);
+            });
+
+            const sortedBidang = Object.keys(groups).sort();
+            
+            container.innerHTML = sortedBidang.map(bidang => {
+                const members = groups[bidang].sort((a, b) => String(a.nama).localeCompare(b.nama));
+                return `
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col group hover:border-indigo-200 transition-all">
+                        <div class="p-6 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+                            <h4 class="font-black text-slate-800 text-[11px] uppercase tracking-wider truncate mr-2">
+                                ${bidang}
+                            </h4>
+                            <span class="bg-white px-2 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm border border-slate-100">
+                                ${members.length}
+                            </span>
+                        </div>
+                        <div class="p-6 max-h-[250px] overflow-y-auto card-scroll">
+                            <ul class="space-y-3">
+                                ${members.map(m => `
+                                    <li class="flex items-start gap-3">
+                                        <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 flex-shrink-0"></div>
+                                        <div class="flex flex-col min-w-0">
+                                            <span class="text-[11px] font-bold text-slate-700 truncate leading-tight uppercase">${m.nama}</span>
+                                            <span class="text-[9px] font-medium text-slate-400 truncate">${m.jabatan}</span>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function renderPelaksanaGrid() {
+            const container = document.getElementById('grid-pelaksana');
+            if (!container) return;
+            const pelaksana = employees.filter(e => String(e.kelompok_jabatan || '').toUpperCase().includes('PELAKSANA'));
+            if (pelaksana.length === 0) {
+                container.innerHTML = '<div class="py-12 text-center opacity-20 text-[10px] font-bold uppercase tracking-widest">Tidak Ada Data Pelaksana</div>';
+                return;
+            }
+            const counts = {};
+            pelaksana.forEach(emp => {
+                let val = String(emp.bidang || 'TIDAK TERISI').trim().toUpperCase();
+                counts[val] = (counts[val] || 0) + 1;
+            });
+            const sortedKeys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+            container.innerHTML = sortedKeys.map(key => `
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-slate-600 truncate pr-4">${key}</span>
+                        <span>${counts[key]}</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-1.5 rounded-full">
+                        <div class="bg-slate-800 h-full rounded-full" style="width: ${(counts[key]/pelaksana.length)*100}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- CRUD LOGIC ---
+        function renderEmployees(data = employees) {
+            const tbody = document.getElementById('employeeTableBody');
+            const noData = document.getElementById('noDataMessage');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                noData.classList.remove('hidden');
+                return;
+            }
+            noData.classList.add('hidden');
+            data.forEach((emp) => {
+                const { tglLahir, usia } = extractInfoFromNip(emp.nip);
+                const row = `
+                    <tr class="hover:bg-slate-50 transition-colors group">
+                        <td class="px-8 py-6">
+                            <div class="font-bold text-slate-800 text-sm uppercase">${emp.nama || '-'}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">${emp.nip || '-'}</div>
+                        </td>
+                        <td class="px-8 py-6">
+                            <div class="text-xs font-bold text-slate-700">${tglLahir}</div>
+                            <div class="text-[9px] font-black text-indigo-500 uppercase mt-0.5">Usia: ${usia} Tahun</div>
+                        </td>
+                        <td class="px-8 py-6">
+                            <div class="flex gap-2">
+                                <span class="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-[8px] font-black uppercase">${emp.status || '-'}</span>
+                                <span class="bg-pink-50 text-pink-600 px-2 py-0.5 rounded text-[8px] font-black uppercase">${emp.jk || '-'}</span>
+                            </div>
+                        </td>
+                        <td class="px-8 py-6">
+                            <div class="text-xs font-bold text-slate-700 uppercase">${emp.jabatan || '-'}</div>
+                            <div class="text-[9px] text-indigo-400 font-bold uppercase mt-0.5">${emp.golongan || '-'}</div>
+                        </td>
+                        <td class="px-8 py-6">
+                            <div class="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-lg border border-amber-100 inline-block uppercase tracking-tight">${emp.rincian_unit || '-'}</div>
+                        </td>
+                        <td class="px-8 py-6 text-center no-print">
+                            <div class="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="editEmployee(${emp.id})" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                                <button onclick="deleteEmployee(${emp.id})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+            lucide.createIcons();
+        }
+
+        // --- EXCEL PARSING ---
+        function handleExcelImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                    if (jsonData.length === 0) throw "File Kosong";
+                    const newEntries = jsonData.map((row, idx) => {
+                        const normalizedRow = {};
+                        Object.keys(row).forEach(key => normalizedRow[key.trim().toUpperCase()] = row[key]);
+                        const entry = { id: Date.now() + idx };
+                        Object.keys(columnMap).forEach(key => {
+                            const foundKey = columnMap[key].find(name => normalizedRow[name] !== undefined);
+                            let val = foundKey ? normalizedRow[foundKey] : "";
+                            if (key === 'jk') {
+                                if (String(val).toUpperCase().includes('PEREMPUAN') || String(val).toUpperCase() === 'P') val = 'P';
+                                else if (String(val).toUpperCase().includes('LAKI') || String(val).toUpperCase() === 'L') val = 'L';
+                            }
+                            entry[key] = String(val).trim() || "TIDAK TERISI";
+                        });
+                        return entry;
+                    });
+                    employees = [...employees, ...newEntries];
+                    saveData();
+                    showToast('Sukses', `${newEntries.length} data terbaca dan tersimpan otomatis.`, 'check-circle');
+                } catch (err) {
+                    showToast('Gagal', 'Pastikan format Excel benar.', 'x-circle');
+                }
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- PERSISTENCE LOGIC ---
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
+            renderEmployees();
+            updateStats();
+        }
+
+        function showSection(section) {
+            document.getElementById('dashboard-section').classList.add('hidden');
+            document.getElementById('employees-section').classList.add('hidden');
+            document.getElementById('nav-dashboard').classList.remove('bg-slate-800', 'text-white');
+            document.getElementById('nav-employees').classList.remove('bg-slate-800', 'text-white');
+            document.getElementById(`${section}-section`).classList.remove('hidden');
+            document.getElementById(`nav-${section}`).classList.add('bg-slate-800', 'text-white');
+            if (section === 'dashboard') updateStats();
+            lucide.createIcons();
+        }
+
+        function toggleModal(show) {
+            document.getElementById('employeeModal').classList.toggle('modal-active', show);
+        }
+
+        function openAddModal() {
+            document.getElementById('employeeForm').reset();
+            document.getElementById('formId').value = "";
+            document.getElementById('modalTitle').textContent = "Input Manual Pegawai";
+            toggleModal(true);
+        }
+
+        function editEmployee(id) {
+            const emp = employees.find(e => e.id === id);
+            if (!emp) return;
+            document.getElementById('formId').value = emp.id;
+            document.getElementById('formNama').value = emp.nama;
+            document.getElementById('formNip').value = emp.nip;
+            document.getElementById('formJk').value = String(emp.jk).toUpperCase().startsWith('P') ? 'P' : 'L';
+            document.getElementById('formStatus').value = emp.status || 'PNS';
+            document.getElementById('formJabatan').value = emp.jabatan;
+            document.getElementById('formKelompokJabatan').value = emp.kelompok_jabatan || '';
+            document.getElementById('formBidang').value = emp.bidang || '';
+            document.getElementById('formRincianUnit').value = emp.rincian_unit || '';
+            document.getElementById('formGolongan').value = emp.golongan || '';
+            document.getElementById('formAgama').value = emp.agama || '';
+            document.getElementById('modalTitle').textContent = "Sunting Data Pegawai";
+            toggleModal(true);
+        }
+
+        function deleteEmployee(id) {
+            if (confirm("Hapus data ini secara permanen?")) {
+                employees = employees.filter(e => e.id !== id);
+                saveData();
+            }
+        }
+
+        function clearAllData() {
+            if (confirm("Hapus seluruh database? Tindakan ini tidak dapat dibatalkan.")) {
+                employees = [];
+                saveData();
+            }
+        }
+
+        function showToast(title, msg, icon) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMsg').textContent = msg;
+            document.getElementById('toastIcon').innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i>`;
+            lucide.createIcons();
+            toast.classList.remove('translate-y-40', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-40', 'opacity-0'), 3000);
+        }
+
+        document.getElementById('employeeForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('formId').value;
+            const newData = {
+                nama: document.getElementById('formNama').value,
+                nip: document.getElementById('formNip').value,
+                jk: document.getElementById('formJk').value,
+                status: document.getElementById('formStatus').value,
+                jabatan: document.getElementById('formJabatan').value,
+                kelompok_jabatan: document.getElementById('formKelompokJabatan').value,
+                bidang: document.getElementById('formBidang').value,
+                rincian_unit: document.getElementById('formRincianUnit').value,
+                golongan: document.getElementById('formGolongan').value,
+                agama: document.getElementById('formAgama').value
+            };
+            if (id) {
+                const idx = employees.findIndex(e => e.id == id);
+                employees[idx] = { ...employees[idx], ...newData };
+            } else {
+                employees.unshift({ id: Date.now(), ...newData });
+            }
+            saveData();
+            toggleModal(false);
+            showToast('Berhasil', 'Data berhasil disimpan.', 'check');
+        });
+
+        document.getElementById('employeeSearch').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            const filtered = employees.filter(emp => 
+                String(emp.nama).toLowerCase().includes(val) || 
+                String(emp.nip).includes(val) || 
+                String(emp.jabatan).toLowerCase().includes(val)
+            );
+            renderEmployees(filtered);
+        });
+
+        async function downloadDashboardPDF() {
+            const element = document.getElementById('printableArea');
+            const pdfHeader = document.getElementById('pdfHeader');
+            pdfHeader.classList.remove('hidden');
+            const opt = {
+                margin: 0.2, filename: 'Laporan_Kepegawaian_RRI.pdf',
+                html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+            await html2pdf().set(opt).from(element).save();
+            pdfHeader.classList.add('hidden');
+        }
+
+        document.getElementById('excelInput').addEventListener('change', handleExcelImport);
+        window.onload = init;
+    </script>
+</body>
+</html>
